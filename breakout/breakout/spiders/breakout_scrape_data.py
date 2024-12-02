@@ -1,4 +1,5 @@
 import scrapy
+import re
 
 
 class Brands(scrapy.Spider):
@@ -19,20 +20,15 @@ class Brands(scrapy.Spider):
 
     def extract_products_fields(self, response):
 
-        language = response.url.split('/')
-        if 'en' in language:
-            language = language[4]
-        else:
-            language = None
-
-        brand = response.url.split('/')
-        brand = brand[3] if len(brand) > 3 else 'en'
-
         model = response.css("#productNoValue::text").get()
-        brand = brand
         product = response.css(".product-title-heading::text").get()
         thumb = response.css("#productHeaderImg img::attr(src)").get()
-        file_urls = response.css('#user-guides-7449D8266CC74DBAA3644E45B7F94225-0 ul li:nth-last-child(2) a::attr(href)').get()
+        file_urls = response.xpath('.//a[contains(text(), "Use and Care Guide")]/@href').get()
+        type_ = response.xpath('.//div[contains(@class, "tab-pane")]//li/a[contains(text(), "Use and Care Guide")]/text()').get()
+        type_ = re.search(r"(Use and Care Guide)", type_)
+        type_ = type_.group(0) if type_ else None
+        brand = response.css('span[itemprop="name"]::text').get()
+        language = response.css('html.non-touch::attr(lang)').get()
         if thumb:
             thumb = f"https://www.subzero-wolf.com/trade-resources/product-specifications/product-specifications-detail{thumb}"
         if file_urls:
@@ -44,9 +40,9 @@ class Brands(scrapy.Spider):
             "brand": brand if brand else None,
             "product": product if product else None,
             "product_parent": '',
-            "product_lang": language,
+            "product_lang": language.split('-')[0],
             "file_urls": file_urls,
-            "type": 'User and Care guide',
+            "type": type_,
             "url": response.url,
             "thumb": thumb,
             "source": "Sub-Zero, Wolf, and Cove | Kitchen Appliances that Inspire"
